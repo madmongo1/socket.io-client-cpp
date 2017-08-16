@@ -1,84 +1,87 @@
 cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+include(cmake/HunterGate.cmake)
+
+HunterGate(
+        URL "https://github.com/ruslo/hunter/archive/v0.19.71.tar.gz"
+        SHA1 "8fe144d9490501d398777532e0c0f56bc7bb0ec7"
+        LOCAL
+)
+
+
 PROJECT(sioclient)
 
-option(BUILD_SHARED_LIBS "Build the shared library" OFF)
-option(Boost_USE_STATIC_LIBS "Use Boost static version" ON)
+if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+endif ()
+
+hunter_add_package(OpenSSL)
+hunter_add_package(Boost COMPONENTS system date_time random)
+hunter_add_package(RapidJSON)
+hunter_add_package(websocketpp)
+
+find_package(OpenSSL REQUIRED)
+find_package(Boost CONFIG REQUIRED COMPONENTS system date_time random)
+find_package(RapidJSON CONFIG REQUIRED)
+find_package(websocketpp CONFIG REQUIRED)
+
 
 set(MAJOR 1)
 set(MINOR 6)
-set(PATCH 0)
+set(PATCH 1)
 
-if(NOT CMAKE_BUILD_TYPE )
-MESSAGE(STATUS "not define build type, set to release" )
-set(CMAKE_BUILD_TYPE Release )
-elseif(NOT (${CMAKE_BUILD_TYPE} STREQUAL "Release" OR ${CMAKE_BUILD_TYPE} STREQUAL "Debug" ))
-MESSAGE(SEND_ERROR "CMAKE_BUILD_TYPE must be either Release or Debug")
-return()
-endif()
 
-set(BOOST_VER "1.55.0" CACHE STRING "boost version" )
+option(BUILD_SHARED_LIBS "Build the shared library" OFF)
 
-set(Boost_USE_MULTITHREADED ON) 
-set(Boost_USE_STATIC_RUNTIME OFF) 
-find_package(Boost ${BOOST_VER} REQUIRED COMPONENTS system date_time random) 
 
 aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/src ALL_SRC)
 aux_source_directory(${CMAKE_CURRENT_LIST_DIR}/src/internal ALL_SRC)
-file(GLOB ALL_HEADERS ${CMAKE_CURRENT_LIST_DIR}/src/*.h )
+file(GLOB ALL_HEADERS ${CMAKE_CURRENT_LIST_DIR}/src/*.h)
 set(SIO_INCLUDEDIR ${CMAKE_CURRENT_LIST_DIR})
 
 add_library(sioclient ${ALL_SRC})
-target_include_directories(sioclient PRIVATE ${Boost_INCLUDE_DIRS} 
-    ${CMAKE_CURRENT_LIST_DIR}/src 
-    ${CMAKE_CURRENT_LIST_DIR}/lib/websocketpp 
-    ${CMAKE_CURRENT_LIST_DIR}/lib/rapidjson/include
-)
+target_include_directories(sioclient PRIVATE ${Boost_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_LIST_DIR}/src
+        )
 
-set_property(TARGET sioclient PROPERTY CXX_STANDARD 11)
-set_property(TARGET sioclient PROPERTY CXX_STANDARD_REQUIRED ON)
-target_link_libraries(sioclient PRIVATE ${Boost_LIBRARIES})
-if(BUILD_SHARED_LIBS)
-set_target_properties(sioclient
-	PROPERTIES
-		SOVERSION ${MAJOR}
-		VERSION ${MAJOR}.${MINOR}.${PATCH}
-	)
-endif()
+target_link_libraries(sioclient PUBLIC RapidJSON::rapidjson)
+
+target_link_libraries(sioclient PUBLIC Boost::boost Boost::system Boost::date_time Boost::random)
+
+if (BUILD_SHARED_LIBS)
+    set_target_properties(sioclient
+            PROPERTIES
+            SOVERSION ${MAJOR}
+            VERSION ${MAJOR}.${MINOR}.${PATCH}
+            )
+endif ()
+
 list(APPEND TARGET_LIBRARIES sioclient)
 
-find_package(OpenSSL)
-if(OPENSSL_FOUND)
 add_library(sioclient_tls ${ALL_SRC})
-target_include_directories(sioclient_tls PRIVATE ${Boost_INCLUDE_DIRS} 
-    ${CMAKE_CURRENT_LIST_DIR}/src 
-    ${CMAKE_CURRENT_LIST_DIR}/lib/websocketpp 
-    ${CMAKE_CURRENT_LIST_DIR}/lib/rapidjson/include
-    ${OPENSSL_INCLUDE_DIR}
-)
-
-set_property(TARGET sioclient_tls PROPERTY CXX_STANDARD 11)
-set_property(TARGET sioclient_tls PROPERTY CXX_STANDARD_REQUIRED ON)
-target_link_libraries(sioclient_tls PRIVATE ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} )
+target_link_libraries(sioclient_tls PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(sioclient_tls PUBLIC Boost::boost Boost::system Boost::date_time Boost::random)
+target_link_libraries(sioclient_tls PUBLIC websocketpp::websocketpp)
 target_compile_definitions(sioclient_tls PRIVATE -DSIO_TLS)
-if(BUILD_SHARED_LIBS)
-set_target_properties(sioclient_tls
-	PROPERTIES
-		SOVERSION ${MAJOR}
-		VERSION ${MAJOR}.${MINOR}.${PATCH}
-	)
-endif()
+if (BUILD_SHARED_LIBS)
+    set_target_properties(sioclient_tls
+            PROPERTIES
+            SOVERSION ${MAJOR}
+            VERSION ${MAJOR}.${MINOR}.${PATCH}
+            )
+endif ()
 list(APPEND TARGET_LIBRARIES sioclient_tls)
 
-endif()
+install(EXPORT SocketIOConfig
+        DESTINATION lib/SocketIO
+        NAMESPACE SocketIO::
+        )
 
-install(FILES ${ALL_HEADERS} 
-    DESTINATION "${CMAKE_CURRENT_LIST_DIR}/build/include"
-)
+install(FILES ${ALL_HEADERS}
+        DESTINATION include
+        )
 
 install(TARGETS ${TARGET_LIBRARIES}
-    DESTINATION "${CMAKE_CURRENT_LIST_DIR}/build/lib/${CMAKE_BUILD_TYPE}"
-)
-
-install(FILES ${Boost_LIBRARIES} 
-    DESTINATION "${CMAKE_CURRENT_LIST_DIR}/build/lib/${CMAKE_BUILD_TYPE}"
-)
+        EXPORT SocketIOConfig
+        DESTINATION lib
+        INCLUDES DESTINATION include
+        )
