@@ -71,9 +71,9 @@ if (BUILD_SHARED_LIBS)
 endif ()
 list(APPEND TARGET_LIBRARIES sioclient_tls)
 
-install(EXPORT SocketIOConfig
-        DESTINATION lib/SocketIO
-        NAMESPACE SocketIO::
+install(EXPORT SocketIOClientConfig
+        DESTINATION lib/SocketIOClient
+        NAMESPACE SocketIOClient::
         )
 
 install(FILES ${ALL_HEADERS}
@@ -81,7 +81,7 @@ install(FILES ${ALL_HEADERS}
         )
 
 install(TARGETS ${TARGET_LIBRARIES}
-        EXPORT SocketIOConfig
+        EXPORT SocketIOClientConfig
         DESTINATION lib
         INCLUDES DESTINATION include
         )
