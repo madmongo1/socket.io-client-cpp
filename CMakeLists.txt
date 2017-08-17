@@ -8,7 +8,12 @@ HunterGate(
 )
 
 
-PROJECT(sioclient)
+set(MAJOR 1)
+set(MINOR 6)
+set(PATCH 1)
+set(VERSION "${MAJOR}.${MINOR}.${PATCH}")
+
+PROJECT(SocketIOClient VERSION "${VERSION}")
 
 if (NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 11)
@@ -25,9 +30,6 @@ find_package(RapidJSON CONFIG REQUIRED)
 find_package(websocketpp CONFIG REQUIRED)
 
 
-set(MAJOR 1)
-set(MINOR 6)
-set(PATCH 1)
 
 
 option(BUILD_SHARED_LIBS "Build the shared library" OFF)
@@ -71,17 +73,42 @@ if (BUILD_SHARED_LIBS)
 endif ()
 list(APPEND TARGET_LIBRARIES sioclient_tls)
 
-install(EXPORT SocketIOClientConfig
-        DESTINATION lib/SocketIOClient
-        NAMESPACE SocketIOClient::
+#
+# installation
+#
+
+set(include_install_dir "include")
+set(config_install_dir "lib/cmake/${PROJECT_NAME}")
+set(config_export_name "${PROJECT_NAME}Config")
+set(targets_export_name "${PROJECT_NAME}Targets")
+set(project_config "${CMAKE_CURRENT_BINARY_DIR}/${config_export_name}.cmake")
+set(version_config "${CMAKE_CURRENT_BINARY_DIR}/${config_export_name}Version.cmake")
+set(namespace "${PROJECT_NAME}::")
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file( # Uses target_exports_name
+        "cmake/hunter.Config.cmake.in"
+        "${project_config}"
+        INSTALL_DESTINATION "${config_install_dir}"
         )
+write_basic_package_version_file(
+        "${version_config}"
+        VERSION "${PROJECT_VERSION}"
+        COMPATIBILITY SameMajorVersion)
+
+install(TARGETS ${TARGET_LIBRARIES} DESTINATION lib
+        EXPORT ${targets_export_name}
+        INCLUDES DESTINATION "${include_install_dir}")
+
+install(
+        EXPORT "${targets_export_name}"
+        NAMESPACE "${namespace}"
+        DESTINATION "${config_install_dir}")
 
 install(FILES ${ALL_HEADERS}
         DESTINATION include
         )
 
-install(TARGETS ${TARGET_LIBRARIES}
-        EXPORT SocketIOClientConfig
-        DESTINATION lib
-        INCLUDES DESTINATION include
-        )
+install(
+        FILES "${project_config}" "${version_config}"
+        DESTINATION "${config_install_dir}")
